@@ -513,3 +513,37 @@ def test_ast_expr():
 
 def test_ast_module():
     assert pformat(ast.parse('print(1, 2, round(3))')).startswith('Module(\n    body=[')
+
+
+@pytest.mark.parametrize('width', [7, 11, 15])
+@pytest.mark.parametrize('value', ['abcdefghijk', b'abcdefghijk'])
+def test_nested_string_exhausted_width(width: int, value: str | bytes):
+    output = PrettyFormat(width=width)([value])
+    assert ast.literal_eval(output) == [value]
+
+
+@pytest.mark.parametrize('width', [7, 11, 15])
+def test_nested_bytearray_exhausted_width(width: int):
+    value = bytearray(b'abcdefghijk')
+    output = PrettyFormat(width=width)([value])
+    node = ast.parse(output, mode='eval').body
+    assert isinstance(node, ast.List)
+    call = node.elts[0]
+    assert isinstance(call, ast.Call)
+    assert ast.literal_eval(call.args[0]) == bytes(value)
+
+
+@pytest.mark.parametrize('width', [12, 120])
+@pytest.mark.parametrize('depth', [2, 30])
+@pytest.mark.parametrize('highlight', [False, True])
+def test_nested_raw_repr_exhausted_width(width: int, depth: int, highlight: bool):
+    class LongRepr:
+        def __repr__(self) -> str:
+            return 'Custom(value=' + 'x' * 120 + ')'
+
+    leaf = LongRepr()
+    value: Any = leaf
+    for _ in range(depth):
+        value = [value]
+    output = PrettyFormat(width=width)(value, highlight=highlight)
+    assert repr(leaf) in ''.join(strip_ansi(output).split())
