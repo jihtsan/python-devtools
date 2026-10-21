@@ -291,7 +291,8 @@ class PrettyFormat:
             from textwrap import wrap
 
             for line in lines:
-                sub_lines = wrap(line, wrap_at)
+                # At width one, whitespace must occupy its own line instead of being dropped by textwrap.
+                sub_lines = line.rstrip('\r\n') if wrap_at == 1 else wrap(line, wrap_at)
                 for sline in sub_lines:
                     self._stream.write(prefix + sline + '\n')
             self._stream.write(indent_current * self._c + ')')

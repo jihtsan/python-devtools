@@ -547,3 +547,21 @@ def test_nested_raw_repr_exhausted_width(width: int, depth: int, highlight: bool
         value = [value]
     output = PrettyFormat(width=width)(value, highlight=highlight)
     assert repr(leaf) in ''.join(strip_ansi(output).split())
+
+
+@pytest.mark.parametrize('width,depth', [(12, 2), (13, 2), (120, 30)])
+@pytest.mark.parametrize('highlight', [False, True])
+@pytest.mark.parametrize('payload', ['alpha beta  gamma', ' leading and trailing ', 'alpha\tbeta'])
+def test_exhausted_raw_repr_preserves_whitespace(width: int, depth: int, highlight: bool, payload: str):
+    class RawRepr:
+        def __repr__(self) -> str:
+            return f"Custom('{payload}')"
+
+    leaf = RawRepr()
+    value: Any = leaf
+    for _ in range(depth):
+        value = [value]
+    output = strip_ansi(PrettyFormat(width=width)(value, highlight=highlight))
+    prefix = ' ' * ((depth + 1) * 4)
+    content = ''.join(line[len(prefix) :] for line in output.splitlines() if line.startswith(prefix))
+    assert content == repr(leaf)
